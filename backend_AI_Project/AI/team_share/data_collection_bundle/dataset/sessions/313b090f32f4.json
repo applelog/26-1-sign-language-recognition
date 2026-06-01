@@ -1,0 +1,16 @@
+{
+  "session_id": "313b090f32f4",
+  "collector_id": "gangwoo",
+  "collector_name": "강우",
+  "label_id": 32,
+  "label_name": "우",
+  "label_code": "ㅜ",
+  "target_frames": 180,
+  "collection_mode": "right_hand",
+  "dataset_type": "features",
+  "notes": "",
+  "created_at": "2026-05-28T15:26:06.237476",
+  "csv_path": "dataset/features/gangwoo/label_32_ㅜ__20260528_152606__313b090f32f4.csv",
+  "frames_saved": 180,
+  "ended_at": "2026-05-28T15:26:45.852524"
+}

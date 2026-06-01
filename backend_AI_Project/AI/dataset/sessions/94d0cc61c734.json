@@ -1,0 +1,15 @@
+{
+  "session_id": "94d0cc61c734",
+  "collector_id": "heetae",
+  "collector_name": "희태",
+  "label_id": 19,
+  "label_name": "아",
+  "label_code": "ㅏ",
+  "target_frames": 180,
+  "collection_mode": "right_hand",
+  "notes": "집 조명/옷장배",
+  "created_at": "2026-05-27T05:06:04.608486",
+  "csv_path": "dataset\\features\\heetae\\label_19_ㅏ__20260527_050604__94d0cc61c734.csv",
+  "frames_saved": 180,
+  "ended_at": "2026-05-27T05:07:14.375672"
+}

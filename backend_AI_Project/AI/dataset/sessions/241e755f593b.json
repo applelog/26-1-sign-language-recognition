@@ -1,0 +1,15 @@
+{
+  "session_id": "241e755f593b",
+  "collector_id": "heetae",
+  "collector_name": "희태",
+  "label_id": 15,
+  "label_name": "키읔",
+  "label_code": "ㅋ",
+  "target_frames": 180,
+  "collection_mode": "right_hand",
+  "notes": "집 조명/옷장배",
+  "created_at": "2026-05-27T05:04:47.045926",
+  "csv_path": "dataset\\features\\heetae\\label_15_ㅋ__20260527_050447__241e755f593b.csv",
+  "frames_saved": 180,
+  "ended_at": "2026-05-27T05:05:42.930930"
+}
