@@ -1,146 +1,183 @@
 # 정적 수화 인식 실시간 자막 서비스
 
-웹캠으로 정적 수화 손모양을 인식하고, 분류된 자음과 모음을 한글 텍스트로
-조합하여 실시간 자막으로 보여주는 프로젝트입니다. 수어 사용자와 비수어
-사용자 사이의 소통 장벽을 낮추는 것을 목표로 합니다.
+웹캠으로 정적 수화 손모양을 인식하고, SVM 모델로 자음/모음을 분류한 뒤
+한글 텍스트로 조합해 실시간 자막처럼 보여주는 MVP입니다.
 
-현재는 정적 수화 기반 MVP를 개발하고 있으며, 향후 동적 수화 인식과 웹 기반
-실시간 자막 서비스로 확장할 예정입니다.
+현재 범위는 정적 수화입니다. 동적 수화는 정적 인식 흐름이 안정화된 뒤 확장합니다.
 
 ## 주요 기능
 
-- 웹캠 영상에서 MediaPipe Hands 손 랜드마크 추출
-- 정적 수화 자음·모음과 삭제 동작을 SVM 모델로 분류
-- `START`와 `END` 양손 제어 동작을 사용한 입력 세션 관리
-- 인식된 자음과 모음의 한글 조합 및 결과 텍스트 표시
-- 팀원별 브라우저 데이터 수집기와 통합 학습 흐름 제공
-- OpenCV 실행기 및 웹 데모 UI를 통한 파일럿 확인
+- 브라우저 또는 OpenCV에서 MediaPipe Hands 랜드마크 추출
+- SVM 모델 기반 오른손 정적 자모/DELETE 분류
+- 양손 `START`, `END` 제어 자세로 입력 세션 관리
+- 쌍자음은 기본 자음 반복 입력으로 조합
+- `ㅘ`, `ㅙ`, `ㅝ`, `ㅞ`는 기본 모음 조합으로 생성
+- FastAPI 백엔드와 웹 UI 연동
+- 방 코드 기반 영상통화형 UI와 WebSocket 자막 공유
+- `수어 사용자` / `비수어 사용자` 역할 선택
+- 비수어 사용자용 STT 중심 화면
+- Accuracy, Macro F1-score, Confusion Matrix, 라벨별 Precision/Recall/F1 리포트 생성
 
-## 입력 흐름
-
-```text
-양손 펼친손 START
-  -> 오른손 정적 자모 입력
-  -> 필요 시 오른손 DELETE
-  -> 양손 주먹 END
-  -> 조합된 텍스트 출력
-```
-
-| ID | 입력 | 처리 방식 |
-| --- | --- | --- |
-| `0..18` | 자음 | 오른손 특징 기반 SVM 분류 |
-| `19..39` | 모음 | 오른손 특징 기반 SVM 분류 |
-| `40` | `START` | 양손 펼친손 규칙 판정 |
-| `41` | `END` | 양손 주먹 규칙 판정 |
-| `42` | `DELETE` | 오른손 특징 기반 SVM 분류 |
-
-## 기술 구성
-
-| 영역 | 기술 및 역할 |
-| --- | --- |
-| Hand Tracking | MediaPipe Hands |
-| Feature Engineering | 관절 각도, 정규화 좌표, 손끝 거리 기반 83차원 특징 |
-| Classification | scikit-learn `StandardScaler + SVC(RBF)` |
-| Text Assembly | 자모 입력 상태 관리 및 한글 조합 로직 |
-| Desktop Demo | OpenCV + Pillow 기반 실시간 인식 화면 |
-| Web Collection | 브라우저 손 추적 기반 팀 데이터 수집기 |
-| Web Demo Prototype | `gemini/` UI와 Python HTTP 추론 서버 |
-
-현재 구현된 AI 모델은 MLP가 아닌 **SVM `.pkl` 모델**입니다. 웹 데모
-프로토타입은 Python HTTP 서버가 모델을 로드해 `/api/predict`로 결과를
-반환하는 형태이며, FastAPI/WebSocket 기반 서비스 구조는 후속 개발 범위입니다.
-
-## 모델과 데이터
-
-오른손 정적 입력은 MediaPipe 랜드마크에서 계산한 83개 특징값을 모델 입력으로
-사용합니다.
+## 프로젝트 구조
 
 ```text
-15개 관절 각도 + 63개 정규화 좌표 + 5개 손끝 거리 = 83개 특징
+26-1-sign-language-recognition/
+├── AI/                    # 모델, 학습/평가/실시간 실행 코드
+├── backend/               # FastAPI 백엔드
+├── frontend/              # 웹 UI
+├── README.md              # GitHub용 대표 문서
+├── PROJECT_GUIDE.md       # 팀원/개발자용 상세 운영 문서
+├── PROJECT_PRESENTATION_NOTES.md
+├── codex.md               # 작업 인수인계 문서
+└── requirements.txt       # 공통 Python 의존성
 ```
 
-- 학습 대상 모델 파일: `sign_language_model.pkl`
-- 파일럿 테스트 모델: `pilot_sign_language_model.pkl`
-- 자모/`DELETE` 수집 데이터: `team_share/data_collection_bundle/dataset/features/`
-- 양손 `START`/`END` 확인 데이터: `team_share/data_collection_bundle/dataset/control_features/`
-- 라벨 기준 설정: `gesture_config.json`
-
-`START`와 `END`는 현재 단일 손 SVM 학습에 포함하지 않고 양손 규칙으로
-처리합니다.
-
-## 실행 방법
-
-### 1. 의존성 설치
+## 설치
 
 ```bash
 python -m pip install -r requirements.txt
 ```
 
-### 2. 데이터 수집기 실행
+## 모델 사용 및 재학습
 
-팀원별 데이터 수집은 독립 번들에서 진행합니다.
-
-```bash
-cd team_share/data_collection_bundle
-python web_server.py
-```
-
-브라우저에서 `http://localhost:8000`에 접속합니다. 수집은 시작 버튼을 누른
-후 5초 뒤 시작되며, 라벨별 목표 프레임이 채워지면 저장이 끝나고 다음 담당
-라벨이 선택됩니다.
-
-### 3. 파일럿 모델 학습 및 OpenCV 테스트
-
-일부 강우 데이터만으로 동작을 확인할 때 사용합니다.
-
-```bash
-python train_model.py --pilot --collector gangwoo
-python real_time_recognition.py --pilot
-```
-
-파일럿 모델은 수집된 일부 라벨만 구분하므로 최종 인식 성능을 의미하지
-않습니다.
-
-### 4. 전체 모델 학습 및 실행
-
-팀 데이터가 모두 병합된 이후 실행합니다.
-
-```bash
-python train_model.py
-python real_time_recognition.py
-```
-
-## 웹 서비스 연동 방향
-
-현재 웹 데모 프로토타입은 브라우저에서 손 랜드마크를 추출한 뒤 Python
-추론 서버로 전송하여 예측 결과와 조합 텍스트를 표시하는 흐름을 사용합니다.
+GitHub에는 바로 실행 가능한 학습 완료 모델을 포함합니다.
 
 ```text
-Webcam -> MediaPipe Hands -> Backend Inference -> SVM Prediction
-       -> Stable Event Handling -> Hangul Assembly -> Subtitle UI
+AI/models/sign_language_model.pkl
 ```
 
-다음 단계에서는 백엔드를 FastAPI 기반으로 정리하고, 실시간 자막 표시를 위한
-통신 인터페이스를 명확히 정의할 계획입니다.
+전체 원본 학습 데이터는 용량과 관리 문제 때문에 GitHub에 포함하지 않습니다.
+재학습이 필요하면 Google Drive에서 팀 데이터셋을 내려받아 `AI/dataset/features/`에 배치한 뒤 실행합니다.
 
-## 프로젝트 구조
+```bash
+python AI/train_model.py
+```
+
+학습/평가 결과:
+
+- 모델: `AI/models/sign_language_model.pkl`
+- 성능 요약: `AI/reports/metrics/latest_summary.txt`
+- 라벨별 지표: `AI/reports/metrics/classification_report.csv`
+- Confusion Matrix: `AI/reports/metrics/confusion_matrix.csv`
+
+학습 데이터는 라벨 기준 폴더로 관리합니다. 수집자 정보는 파일명 prefix로 남깁니다.
 
 ```text
-AI_Project/
-├── gesture_config.json                 # 라벨 및 제어 입력 계약
-├── angle_calculator.py                 # 83차원 특징 추출
-├── train_model.py                      # SVM 학습
-├── real_time_recognition.py            # OpenCV 실시간 실행
-├── runtime_state.py                    # 안정화 및 입력 상태 관리
-├── hangul_composer.py                  # 한글 조합
-├── gemini/                             # 웹 데모 UI 및 추론 서버 프로토타입
-└── team_share/data_collection_bundle/  # 팀원용 데이터 수집 프로그램
+AI/dataset/features/
+├── label_00_ㄱ/gangwoo__label_0_ㄱ__....csv
+├── label_03_ㄷ/heetae__label_3_ㄷ__....csv
+└── label_19_ㅏ/heetae__label_19_ㅏ__....csv
 ```
 
-데이터 수집 및 팀 운영 절차는
-[team_share/PROJECT_GUIDE.md](team_share/PROJECT_GUIDE.md)에서 관리합니다.
+현재 학습 데이터 기준 주요 지표:
 
-## 팀 구성
+- Accuracy: `0.9980`
+- Macro F1-score: `0.9980`
+- Mean confidence: `0.9805`
+
+## 웹 실행
+
+```bash
+python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000
+```
+
+브라우저에서 접속:
+
+```text
+http://localhost:8000
+```
+
+같은 Wi-Fi에서 다른 기기도 접속해야 하면 서버를 전체 네트워크에 열어야 합니다.
+
+```bash
+python3.8 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000
+```
+
+다른 기기에서는 서버 컴퓨터의 IP로 접속합니다.
+
+```text
+http://<서버_IP>:8000
+```
+
+단, 브라우저 카메라는 `HTTPS` 또는 `localhost`에서만 안정적으로 허용됩니다.
+다른 기기가 `http://192.168.x.x:8000`으로 접속하면 방 입장과 자막 공유는 되지만
+카메라가 차단될 수 있습니다. 실제 팀 테스트에서는 로컬 HTTPS로 실행하거나
+브라우저 개발 설정에서 해당 주소를 안전한 출처로 허용해야 합니다.
+
+웹 흐름:
+
+```text
+닉네임 입력
+-> 역할 선택(수어 사용자 또는 비수어 사용자)
+-> 방 생성 또는 방 코드 입장
+-> 같은 방 사용자와 자막 상태 공유
+-> 양손 펼침 START
+-> 오른손 자모 입력
+-> 필요 시 오른손 DELETE
+-> 양손 주먹 END
+-> 조합 텍스트 출력
+```
+
+비수어 사용자 흐름:
+
+```text
+닉네임 입력
+-> 비수어 사용자 선택
+-> 방 생성 또는 방 코드 입장
+-> 마이크 STT로 음성 자막 전송
+-> 상대방 수어 자막 수신
+```
+
+수어 입력 흐름:
+
+```text
+양손 펼침 START
+-> 오른손 자모 입력
+-> 필요 시 오른손 DELETE
+-> 양손 주먹 END
+-> 조합 텍스트 출력
+```
+
+자세한 실행, 종료, 디버그 확인 방법은 `PROJECT_GUIDE.md`를 참고하세요.
+
+## OpenCV 실행
+
+```bash
+python AI/real_time_recognition.py
+```
+
+## 실제 웹캠 평가
+
+예: `ㄱ(label 0)`을 50프레임 평가
+
+```bash
+python AI/evaluate_webcam.py --label 0 --samples 50
+```
+
+결과는 `AI/reports/metrics/webcam_eval_<timestamp>.json`에 저장됩니다.
+
+## API 요약
+
+- `GET /api/health`: 모델/서버 상태 확인
+- `GET /api/config`: 라벨, 제어 라벨, feature dimension 조회
+- `POST /api/predict`: 손 랜드마크 기반 예측 및 텍스트 조합
+- `POST /api/reset`: 입력 세션 초기화
+- `WS /ws/{room_code}/{nickname}`: 같은 방 사용자 간 수어/음성 자막과 입퇴장 상태 공유
+
+프론트엔드는 영상 원본을 보내지 않고 MediaPipe Hands의 21개 랜드마크와
+handedness만 백엔드로 전송합니다. 웹 추론은 수집기와 좌표계를 맞추기 위해
+landmark `x` 좌표를 미러링한 뒤 전송하며, 응답에는 디버깅용 top-3 예측 후보가
+포함됩니다.
+
+현재 웹 UI는 실제 P2P 영상통화가 아니라, 영상통화처럼 보이는 단일 로컬 카메라
+화면과 자막 공유 UI입니다. 같은 방의 다른 브라우저에는 WebSocket으로 자막과
+상태 메시지만 전달합니다.
+
+오른쪽 상단 상대방 패널은 실제 카메라 영상이 아니라 상대방 이름, 역할, 접속 상태,
+최근 자막을 보여주는 상태 패널입니다. 실제 상대방 카메라 영상 송수신은 아직 구현하지
+않았습니다.
+
+## 팀 역할
 
 | 이름 | 역할 |
 | --- | --- |
@@ -149,18 +186,9 @@ AI_Project/
 | 김정효 | 프론트엔드 개발 |
 | 김영래 | 백엔드 개발 |
 
-## 개발 현황
+## 참고
 
-- 정적 수화 데이터 수집기 구현
-- 팀원별 라벨 분배 및 데이터 병합 규칙 수립
-- SVM 파일럿 모델 학습 및 OpenCV 실시간 인식 검증
-- 자모 조합, 삭제, 양손 시작·종료 제어 흐름 구현
-- 웹 데모 UI와 Python 추론 서버 프로토타입 개발 진행
-
-## Roadmap
-
-- 전체 자음·모음 데이터 수집 및 최종 SVM 학습
-- 웹 UI와 추론 백엔드 연동 안정화
-- FastAPI 기반 실시간 자막 API 구조 정리
-- 다양한 사용자 환경에서 인식 성능 평가
-- 정적 수화 안정화 이후 동적 수화 인식 확장 검토
+- 팀 공유/수집 번들은 `AI/team_share/`에 보관합니다.
+- 상세 프로젝트 문서는 `PROJECT_GUIDE.md`, 작업 규칙은 `codex.md`에 보관합니다.
+- AI/CLI 인수인계 문서는 `AI/docs/`에 보관합니다.
+- `trash/`는 삭제 대신 이동해 둔 파일 보관 폴더입니다.
