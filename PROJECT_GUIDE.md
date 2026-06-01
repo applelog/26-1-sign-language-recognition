@@ -13,7 +13,6 @@
 AI_Project/
 ├── README.md
 ├── PROJECT_GUIDE.md
-├── codex.md
 ├── requirements.txt
 ├── backend/               # FastAPI 백엔드
 ├── frontend/              # 웹 UI
