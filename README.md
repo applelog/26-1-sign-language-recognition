@@ -30,7 +30,6 @@
 ├── DATA_LICENSE.md        # 데이터/모델 라이선스(CC BY-NC 4.0)
 ├── PROJECT_GUIDE.md       # 팀원/개발자용 상세 운영 문서
 ├── PROJECT_PRESENTATION_NOTES.md
-├── codex.md               # 작업 인수인계 문서
 └── requirements.txt       # 공통 Python 의존성
 ```
 
