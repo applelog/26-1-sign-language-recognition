@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VisionOS Sign Language Recognition</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div id="appContainer" class="app-container entry-active">
+        <!-- Background Webcam & Canvas -->
+        <video id="webcam" autoplay playsinline muted></video>
+        <canvas id="output_canvas"></canvas>
+        <div class="overlay-gradient"></div>
+
+        <!-- Entry Screen -->
+        <section id="entryScreen" class="entry-screen">
+            <div class="glass-card entry-card">
+                <div class="entry-copy">
+                    <p class="entry-kicker">Sign Caption Room</p>
+                    <h1>정적 수화 인식<br>실시간 자막 서비스</h1>
+                    <p>닉네임과 방 코드를 입력해 통화 화면으로 입장하세요.</p>
+                </div>
+
+                <div class="entry-fields">
+                    <label class="field-label" for="nicknameInput">닉네임</label>
+                    <input id="nicknameInput" class="text-field" type="text" autocomplete="nickname" placeholder="예: 사용자">
+
+                    <label class="field-label" for="roomCodeInput">방 코드</label>
+                    <input id="roomCodeInput" class="text-field" type="text" inputmode="latin" placeholder="예: A7K2">
+
+                    <div class="role-select" aria-label="사용자 역할 선택">
+                        <label class="role-option">
+                            <input type="radio" name="userRole" value="sign" checked>
+                            <span>
+                                <strong>수어 사용자</strong>
+                                <small>카메라로 수어를 인식합니다</small>
+                            </span>
+                        </label>
+                        <label class="role-option">
+                            <input type="radio" name="userRole" value="voice">
+                            <span>
+                                <strong>비수어 사용자</strong>
+                                <small>마이크 STT 자막을 전송합니다</small>
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="entry-actions">
+                    <button id="createRoomBtn" class="primary-btn" type="button">방 생성</button>
+                    <button id="joinRoomBtn" class="secondary-btn" type="button">방 입장</button>
+                    <button id="rejoinRoomBtn" class="secondary-btn rejoin-btn" type="button" hidden>이전 방 다시 입장</button>
+                </div>
+                <div id="entryMessage" class="entry-message">방 생성 시 임시 코드가 자동으로 만들어집니다.</div>
+            </div>
+        </section>
+
+        <!-- VisionOS Top Header -->
+        <header class="vision-header">
+            <div class="header-left">
+                <div id="resultText" class="result-text empty">준비됨</div>
+                <div id="tokenContainer" class="past-tokens">
+                    <!-- Tokens will be injected here as capsules with confidence dots -->
+                </div>
+            </div>
+            
+            <div class="controls glass-panel">
+                <div class="room-meta">
+                    <span id="roomCodeBadge">방 없음</span>
+                    <span id="connectionStatus">입장 대기</span>
+                </div>
+                <div id="modeBadge" class="mode-badge idle">대기 중</div>
+                <button id="clearBtn" class="icon-btn" title="초기화">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                        <path d="M3 3v5h5"></path>
+                    </svg>
+                </button>
+                <button id="leaveBtn" class="leave-btn danger" title="나가기">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                        <path d="M16 17l5-5-5-5"></path>
+                        <path d="M21 12H9"></path>
+                    </svg>
+                    <span>나가기</span>
+                </button>
+            </div>
+        </header>
+
+        <aside class="peer-panel glass-panel">
+            <div class="panel-title">
+                <span>상대방 화면</span>
+                <span id="peerConnectionBadge">대기</span>
+            </div>
+                <div class="peer-video-placeholder">
+                <div id="peerAvatar" class="peer-avatar">상대</div>
+                <div>
+                    <strong id="peerStatusTitle">상대방 대기 중</strong>
+                    <span id="peerStatusText">같은 방 사용자가 들어오면 여기에 표시됩니다.</span>
+                </div>
+            </div>
+        </aside>
+
+        <section class="caption-panel glass-panel">
+            <div class="caption-header">
+                <span>자막</span>
+                <span id="captionStatus">실시간 대기</span>
+            </div>
+            <div id="captionLog" class="caption-log">
+                <div class="caption-empty">수어와 음성 자막이 여기에 표시됩니다.</div>
+            </div>
+        </section>
+
+        <div class="local-status glass-panel">
+            <span>내 화면</span>
+            <strong id="localUserName">입장 전</strong>
+        </div>
+
+        <div class="call-actions glass-panel">
+            <button id="micBtn" class="icon-btn" title="마이크">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <path d="M12 19v3"></path>
+                </svg>
+            </button>
+            <button id="cameraBtn" class="icon-btn" title="카메라">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M23 7l-7 5 7 5V7z"></path>
+                    <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                </svg>
+            </button>
+        </div>
+
+        <!-- VisionOS Bottom Recognition Card -->
+        <main class="vision-main">
+            <section id="recognitionCard" class="glass-card recognition-card idle">
+                <div class="card-content">
+                    <div class="prediction-row">
+                        <span id="statusTitle" class="prediction-label">START를 입력하세요</span>
+                        <span id="confidenceText" class="confidence-value">0%</span>
+                    </div>
+                    <div class="progress-container">
+                        <div id="progressFill" class="progress-fill" style="width: 0%;"></div>
+                    </div>
+                    <div class="debug-panel">
+                        <div id="debugStatus" class="debug-status">손 감지 대기</div>
+                        <div id="topPredictions" class="top-predictions"></div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,8 @@
+정적 수화 SVM 성능 요약
+Accuracy: 0.9980
+Macro F1-score: 0.9980
+Mean confidence: 0.9805
+Average inference time: 0.5294 ms/frame
+Test frames: 3456
+Labels: 32
+Model: models/sign_language_model.pkl

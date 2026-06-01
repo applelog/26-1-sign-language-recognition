@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Project local clutter
+.DS_Store
+AI/dataset/
+AI/team_share/
