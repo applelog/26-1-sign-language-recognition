@@ -26,6 +26,8 @@
 ├── backend/               # FastAPI 백엔드
 ├── frontend/              # 웹 UI
 ├── README.md              # GitHub용 대표 문서
+├── LICENSE                # 소스코드 라이선스(Apache-2.0)
+├── DATA_LICENSE.md        # 데이터/모델 라이선스(CC BY-NC 4.0)
 ├── PROJECT_GUIDE.md       # 팀원/개발자용 상세 운영 문서
 ├── PROJECT_PRESENTATION_NOTES.md
 ├── codex.md               # 작업 인수인계 문서
@@ -192,3 +194,18 @@ landmark `x` 좌표를 미러링한 뒤 전송하며, 응답에는 디버깅용 
 - 상세 프로젝트 문서는 `PROJECT_GUIDE.md`, 작업 규칙은 `codex.md`에 보관합니다.
 - AI/CLI 인수인계 문서는 `AI/docs/`에 보관합니다.
 - `trash/`는 삭제 대신 이동해 둔 파일 보관 폴더입니다.
+
+## License
+
+이 저장소는 코드와 데이터/모델의 라이선스를 분리합니다.
+
+- Source code: Apache License 2.0. 자세한 내용은 `LICENSE`를 확인하세요.
+- Dataset, trained model, and data-derived artifacts: Creative Commons
+  Attribution-NonCommercial 4.0 International (CC BY-NC 4.0). 자세한 내용은
+  `DATA_LICENSE.md`를 확인하세요.
+
+`AI/models/sign_language_model.pkl`, GitHub 또는 Google Drive로 공유되는
+`AI/dataset/**`, `AI/team_share/**`의 수집 데이터와 산출물, 성능 리포트 등
+학습 데이터 기반 산출물은 비상업적 용도로만 사용할 수 있습니다. 상업적 이용,
+재판매, 유료 서비스 통합, 상업적 재배포는 프로젝트 팀의 별도 서면 허가가
+필요합니다.
